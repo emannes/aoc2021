@@ -159,11 +159,86 @@ module Problem_2 : S = struct
   ;;
 end
 
-(* module Problem_3 : S = struct end
- *)
-let problems =
-  [ (module Problem_1 : S); (module Problem_2 : S) (* (module Problem_3 : S)  *) ]
-;;
+module Problem_3 : S = struct
+  type t = int list list
+
+  let parse_input =
+    List.map ~f:(fun s ->
+        String.to_list s
+        |> List.map ~f:(fun digit -> String.of_char digit |> Int.of_string))
+  ;;
+
+  let to_bit num_1s ~length ~kind =
+    let majority_1s = num_1s >= length / 2 in
+    match kind with
+    | `gamma -> if majority_1s then "1" else "0"
+    | `epsilon -> if majority_1s then "0" else "1"
+  ;;
+
+  let solve_a input =
+    let length = List.length input in
+    let rate (kind : [ `gamma | `epsilon ]) =
+      "0b"
+      ^ (List.transpose_exn input
+        |> List.map ~f:(List.sum (module Int) ~f:Fn.id)
+        |> List.map ~f:(to_bit ~length ~kind)
+        |> String.concat)
+      |> Int.of_string
+    in
+    rate `gamma * rate `epsilon
+  ;;
+
+  let filter_to input ~i ~(kind : [ `majority | `minority ]) =
+    let length = List.length input in
+    let num_1s = List.count input ~f:(fun row -> 1 = List.nth_exn row i) in
+    let desired_digit =
+      match kind with
+      | `majority -> if num_1s >= (length + 1) / 2 then 1 else 0
+      | `minority -> if num_1s >= (length + 1) / 2 then 0 else 1
+    in
+    List.filter input ~f:(fun row -> desired_digit = List.nth_exn row i)
+  ;;
+
+  let solve_b input =
+    let row_length = List.hd_exn input |> List.length in
+    let get_rating kind =
+      Int.of_string
+        ("0b"
+        ^ (List.fold (List.init row_length ~f:Fn.id) ~init:input ~f:(fun input i ->
+               if List.length input = 1 then input else filter_to input ~i ~kind)
+          |> List.hd_exn
+          |> List.map ~f:Int.to_string
+          |> String.concat))
+    in
+    get_rating `majority * get_rating `minority
+  ;;
+
+  let test_input =
+    {|
+00100
+11110
+10110
+10111
+10101
+01111
+00111
+11100
+10000
+11001
+00010
+01010|}
+  ;;
+
+  let%expect_test _ =
+    let input = parse_input (clean_input test_input) in
+    print_s [%message (solve_a input : int)];
+    let%bind () = [%expect {| ("solve_a input" 198) |}] in
+    print_s [%message (solve_b input : int)];
+    [%expect {| ("solve_b input" 230) |}]
+  ;;
+end
+
+let problems = [ (module Problem_1 : S); (module Problem_2 : S); (module Problem_3 : S) ]
 
 let command =
   Command.async
