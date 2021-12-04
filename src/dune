@@ -1,0 +1,6 @@
+(library
+ (name aoc_lib)
+ (inline_tests)
+ (libraries core async re)
+ (preprocess
+  (pps ppx_inline_test ppx_jane)))
