@@ -18,6 +18,7 @@ module type S = sig
   type t
 
   val parse_input : string list -> t
+  val test_input : string
   val solve_a : t -> int
   val solve_b : t -> int
 end
@@ -35,8 +36,7 @@ module Problem_1 : S = struct
   let solve_a = num_increases ~gap:1
   let solve_b = num_increases ~gap:3
 
-  let%expect_test _ =
-    let input = {|
+  let test_input = {|
   199
 200
 208
@@ -47,8 +47,10 @@ module Problem_1 : S = struct
 269
 260
 263
-  |} in
-    let input = parse_input (clean_input input) in
+  |}
+
+  let%expect_test _ =
+    let input = parse_input (clean_input test_input) in
     print_s [%message (solve_a input : int)];
     let%bind () = [%expect {| ("solve_a input" 7) |}] in
     print_s [%message (solve_b input : int)];
@@ -139,24 +141,29 @@ module Problem_2 : S = struct
     horizontal_position * depth
   ;;
 
-  let%expect_test _ =
-    let input = {|
+  let test_input = {|
   forward 5
   down 5
   forward 8
   up 3
   down 8
   forward 2
-  |} in
-    let input = parse_input (clean_input input) in
+  |}
+
+  let%expect_test _ =
+    let input = parse_input (clean_input test_input) in
     print_s [%message (solve_a input : int)];
     let%bind () = [%expect {| ("solve_a input" 150) |}] in
     print_s [%message (solve_b input : int)];
-    [%expect{| ("solve_b input" 900) |}]
+    [%expect {| ("solve_b input" 900) |}]
   ;;
 end
 
-let problems = [ (module Problem_1 : S); (module Problem_2 : S) ]
+(* module Problem_3 : S = struct end
+ *)
+let problems =
+  [ (module Problem_1 : S); (module Problem_2 : S) (* (module Problem_3 : S)  *) ]
+;;
 
 let command =
   Command.async
