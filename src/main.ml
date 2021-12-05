@@ -238,7 +238,100 @@ module Problem_3 : S = struct
   ;;
 end
 
-let problems = [ (module Problem_1 : S); (module Problem_2 : S); (module Problem_3 : S) ]
+module Problem_5 : S = struct
+  module Point = struct
+    module T = struct
+      type t = int * int [@@deriving sexp, compare]
+    end
+
+    include T
+    include Comparable.Make (T)
+  end
+
+  module Line = struct
+    type t = Point.t * Point.t [@@deriving sexp]
+
+    let is_horizontal ((_, y1), (_, y2)) = y1 = y2
+    let is_vertical ((x1, _), (x2, _)) = x1 = x2
+
+    let range x1 x2 =
+      let min = Int.min x1 x2 in
+      let max = Int.max x1 x2 in
+      List.range ~stride:1 ~start:`inclusive ~stop:`inclusive min max
+    ;;
+
+    let points_if_axis_aligned (((x1, y1), (x2, y2)) as t) =
+      if is_horizontal t
+      then List.map (range x1 x2) ~f:(fun x -> x, y1)
+      else if is_vertical t
+      then List.map (range y1 y2) ~f:(fun y -> x1, y)
+      else (
+        let to_step c1 c2 = Int.sign (c2 - c1) |> Sign.to_int in
+        let stepx, stepy = to_step x1 x2, to_step y1 y2 in
+        let length = Int.abs (x2 - x1) + 1 in
+        List.init length ~f:(fun i -> x1 + (i * stepx), y1 + (i * stepy)))
+    ;;
+  end
+
+  type t = Line.t list [@@deriving sexp]
+
+  let parse_input =
+    List.map ~f:(fun s ->
+        String.split_on_chars s ~on:(String.to_list ", ->")
+        |> List.filter ~f:(fun s -> not (String.is_empty s))
+        |> List.map ~f:Int.of_string
+        |> function
+        | [ x1; y1; x2; y2 ] -> (x1, y1), (x2, y2)
+        | _ -> failwith "can't parse")
+  ;;
+
+  let num_duplicated_points lines =
+    let point_frequencies =
+      List.concat_map lines ~f:Line.points_if_axis_aligned
+      |> List.map ~f:(fun point -> point, ())
+      |> Point.Map.of_alist_multi
+      |> Map.map ~f:List.length
+    in
+    Map.filter point_frequencies ~f:(fun freq -> freq > 1) |> Map.length
+  ;;
+
+  let solve_a lines =
+    List.filter lines ~f:(fun line -> Line.(is_vertical line || is_horizontal line))
+    |> num_duplicated_points
+  ;;
+
+  let solve_b = num_duplicated_points
+
+  let test_input =
+    {|0,9 -> 5,9
+8,0 -> 0,8
+9,4 -> 3,4
+2,2 -> 2,1
+7,0 -> 7,4
+6,4 -> 2,0
+0,9 -> 2,9
+3,4 -> 1,4
+0,0 -> 8,8
+5,5 -> 8,2|}
+  ;;
+
+  let%expect_test _ =
+    let input = parse_input (clean_input test_input) in
+    print_s [%message (solve_a input : int)];
+    let%bind () = [%expect {| ("solve_a input" 5) |}] in
+    print_s [%message (solve_b input : int)];
+    [%expect {| ("solve_b input" 12) |}]
+  ;;
+end
+
+let problems =
+  [ (module Problem_1 : S)
+  ; (module Problem_2 : S)
+  ; (module Problem_3 : S) (* CR emannes: problem 4 *)
+  ; (module Problem_3)
+  ; (module Problem_5)
+  ]
+;;
 
 let command =
   Command.async
