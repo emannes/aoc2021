@@ -367,7 +367,7 @@ module Problem_4 : S = struct
     let%bind () = [%expect {|
       ("solve_a input" 4512) |}] in
     print_s [%message (solve_b input : int)];
-    [%expect{| ("solve_b input" 1924) |}]
+    [%expect {| ("solve_b input" 1924) |}]
   ;;
 end
 
@@ -520,6 +520,34 @@ module Problem_6 : S = struct
   ;;
 end
 
+module Template : S = struct
+  type t = unit
+
+  let parse_input _ = ()
+  let solve_a () = failwith "not implemented"
+  let solve_b () = failwith "not implemented"
+  let test_input = {|  |}
+
+  let%expect_test _ =
+    let input = parse_input (clean_input test_input) in
+    print_s [%message (solve_a input : int)];
+    let%bind () = [%expect.unreachable] in
+    print_s [%message (solve_b input : int)];
+    [%expect.unreachable]
+    [@@expect.uncaught_exn
+      {|
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+
+    (monitor.ml.Error (Failure "not implemented")
+      ("<backtrace elided in test>" "Caught by monitor block_on_async"))
+    Raised at Base__Result.ok_exn in file "src/result.ml" (inlined), line 201, characters 17-26
+    Called from Async_unix__Thread_safe.block_on_async_exn in file "src/thread_safe.ml", line 132, characters 29-63
+    Called from Expect_test_collector.Make.Instance.exec in file "collector/expect_test_collector.ml", line 244, characters 12-19 |}]
+  ;;
+end
+
 let problems =
   [ (module Problem_1 : S)
   ; (module Problem_2 : S)
@@ -527,6 +555,7 @@ let problems =
   ; (module Problem_4)
   ; (module Problem_5)
   ; (module Problem_6)
+  ; (module Template)
   ]
 ;;
 
