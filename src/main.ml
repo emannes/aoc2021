@@ -520,6 +520,41 @@ module Problem_6 : S = struct
   ;;
 end
 
+module Problem_7 : S = struct
+  type t = int list
+
+  let parse_input rows =
+    List.hd_exn rows |> String.split ~on:',' |> List.map ~f:Int.of_string
+  ;;
+
+  let solve xs ~cost =
+    let compare = Int.compare in
+    let candidates =
+      List.range
+        ~start:`inclusive
+        ~stop:`inclusive
+        (List.min_elt ~compare xs |> Option.value_exn)
+        (List.max_elt ~compare xs |> Option.value_exn)
+    in
+    List.map candidates ~f:(fun target ->
+        List.sum (module Int) xs ~f:(fun x -> cost (Int.abs (x - target))))
+    |> List.min_elt ~compare
+    |> Option.value_exn
+  ;;
+
+  let solve_a = solve ~cost:Fn.id
+  let solve_b = solve ~cost:(fun n -> n * (n + 1) / 2)
+  let test_input = {| 16,1,2,0,4,2,7,1,2,14 |}
+
+  let%expect_test _ =
+    let input = parse_input (clean_input test_input) in
+    print_s [%message (solve_a input : int)];
+    let%bind () = [%expect {| ("solve_a input" 37) |}] in
+    print_s [%message (solve_b input : int)];
+    [%expect{| ("solve_b input" 168) |}]
+  ;;
+end
+
 module Template : S = struct
   type t = unit
 
@@ -555,6 +590,7 @@ let problems =
   ; (module Problem_4)
   ; (module Problem_5)
   ; (module Problem_6)
+  ; (module Problem_7)
   ; (module Template)
   ]
 ;;
