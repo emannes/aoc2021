@@ -238,6 +238,98 @@ module Problem_3 : S = struct
   ;;
 end
 
+module Problem_4 : S = struct
+  module Victory = struct
+    type t =
+      { num_calls : int
+      ; last_call : int
+      ; sum_uncalled : int
+      }
+  end
+
+  module Board = struct
+    type t = int option list list
+
+    let mark_call t call : t =
+      List.map
+        t
+        ~f:
+          (List.map ~f:(function
+              | Some n when call = n -> None
+              | Some n -> Some n
+              | None -> None))
+    ;;
+
+    let sum_uncalled t =
+      List.concat t |> List.filter_opt |> List.sum (module Int) ~f:Fn.id
+    ;;
+
+    let is_bingo t =
+      let horizontal = List.exists t ~f:(List.for_all ~f:Option.is_none) in
+      let vertical =
+        List.exists (List.transpose_exn t) ~f:(List.for_all ~f:Option.is_none)
+      in
+      horizontal || vertical
+    ;;
+  end
+
+  type t =
+    { boards : Board.t list
+    ; calls : int list
+    }
+
+  let parse_input input =
+    let calls, boards =
+      match input with
+      | calls :: boards -> calls, boards
+      | _ -> failwith "can't parse"
+    in
+    let calls = String.split ~on:',' calls |> List.map ~f:Int.of_string in
+    let boards =
+      List.map boards ~f:(fun line ->
+          String.split line ~on:' '
+          |> List.filter ~f:(fun s -> not (String.is_empty s))
+          |> List.map ~f:(fun i -> Some (Int.of_string i)))
+      |> List.groupi ~break:(fun i _ _ -> i mod 5 = 0)
+    in
+    { calls; boards }
+  ;;
+
+  let solve_a _ = failwith "not implemented"
+  let solve_b _ = failwith "not implemented"
+
+  let test_input =
+    {| 7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1
+
+  22 13 17 11  0
+   8  2 23  4 24
+  21  9 14 16  7
+   6 10  3 18  5
+   1 12 20 15 19
+  
+   3 15  0  2 22
+   9 18 13 17  5
+  19  8  7 25 23
+  20 11 10 24  4
+  14 21 16 12  6
+  
+  14 21 17 24  4
+  10 16 15  9 19
+  18  8 23 26 20
+  22 11 13  6  5
+   2  0 12  3  7
+   |}
+  ;;
+
+  let%expect_test _ =
+    let input = parse_input (clean_input test_input) in
+    print_s [%message (solve_a input : int)];
+    let%bind () = [%expect {| ("solve_a input" 198) |}] in
+    print_s [%message (solve_b input : int)];
+    [%expect {| ("solve_b input" 230) |}]
+  ;;
+end
+
 module Problem_5 : S = struct
   module Point = struct
     module T = struct
