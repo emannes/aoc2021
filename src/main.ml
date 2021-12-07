@@ -240,7 +240,7 @@ end
 
 module Problem_4 : S = struct
   module Victory = struct
-    type t =
+    type _t =
       { num_calls : int
       ; last_call : int
       ; sum_uncalled : int
@@ -250,7 +250,7 @@ module Problem_4 : S = struct
   module Board = struct
     type t = int option list list
 
-    let mark_call t call : t =
+    let _mark_call t call : t =
       List.map
         t
         ~f:
@@ -260,11 +260,11 @@ module Problem_4 : S = struct
               | None -> None))
     ;;
 
-    let sum_uncalled t =
+    let _sum_uncalled t =
       List.concat t |> List.filter_opt |> List.sum (module Int) ~f:Fn.id
     ;;
 
-    let is_bingo t =
+    let _is_bingo t =
       let horizontal = List.exists t ~f:(List.for_all ~f:Option.is_none) in
       let vertical =
         List.exists (List.transpose_exn t) ~f:(List.for_all ~f:Option.is_none)
@@ -324,9 +324,20 @@ module Problem_4 : S = struct
   let%expect_test _ =
     let input = parse_input (clean_input test_input) in
     print_s [%message (solve_a input : int)];
-    let%bind () = [%expect {| ("solve_a input" 198) |}] in
+    let%bind () = [%expect.unreachable] in
     print_s [%message (solve_b input : int)];
-    [%expect {| ("solve_b input" 230) |}]
+    [%expect.unreachable]
+    [@@expect.uncaught_exn
+      {|
+    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
+       This is strongly discouraged as backtraces are fragile.
+       Please change this test to not include a backtrace. *)
+
+    (monitor.ml.Error (Failure "not implemented")
+      ("<backtrace elided in test>" "Caught by monitor block_on_async"))
+    Raised at Base__Result.ok_exn in file "src/result.ml" (inlined), line 201, characters 17-26
+    Called from Async_unix__Thread_safe.block_on_async_exn in file "src/thread_safe.ml", line 132, characters 29-63
+    Called from Expect_test_collector.Make.Instance.exec in file "collector/expect_test_collector.ml", line 244, characters 12-19 |}]
   ;;
 end
 
@@ -416,12 +427,76 @@ module Problem_5 : S = struct
   ;;
 end
 
+module Problem_6 : S = struct
+  type t = int list
+
+  let parse_input lines =
+    String.concat ~sep:"," lines |> String.split ~on:',' |> List.map ~f:Int.of_string
+  ;;
+
+  module Query = struct
+    module T = struct
+      type t =
+        { internal_timer : int
+        ; remaining_days : int
+        }
+      [@@deriving sexp, hash, compare]
+    end
+
+    include T
+    include Hashable.Make (T)
+  end
+
+  let rec number_of_fish_on_final_day query ~table =
+    Hashtbl.findi_or_add
+      table
+      query
+      ~default:(fun { Query.internal_timer; remaining_days } ->
+        if internal_timer >= remaining_days
+        then 1
+        else (
+          let remaining_days = remaining_days - internal_timer - 1 in
+          number_of_fish_on_final_day ~table { internal_timer = 6; remaining_days }
+          + number_of_fish_on_final_day ~table { internal_timer = 8; remaining_days }))
+  ;;
+
+  let solve ~final_day input =
+    let table = Query.Table.create () in
+    let () =
+      List.init final_day ~f:Fn.id
+      |> List.iter ~f:(fun remaining_days ->
+             List.iter [ 6; 8 ] ~f:(fun internal_timer ->
+                 let query = { Query.internal_timer; remaining_days } in
+                 let (_ : int) = number_of_fish_on_final_day ~table query in
+                 ()))
+    in
+    List.sum
+      (module Int)
+      input
+      ~f:(fun internal_timer ->
+        number_of_fish_on_final_day ~table { internal_timer; remaining_days = final_day })
+  ;;
+
+  let solve_a = solve ~final_day:80
+  let solve_b = solve ~final_day:256
+  let test_input = "3,4,3,1,2"
+
+  let%expect_test _ =
+    let input = parse_input (clean_input test_input) in
+    print_s [%message (solve_a input : int)];
+    let%bind () = [%expect {| ("solve_a input" 5934) |}] in
+    print_s [%message (solve_b input : int)];
+    [%expect{| ("solve_b input" 26984457539) |}]
+  ;;
+end
+
 let problems =
   [ (module Problem_1 : S)
   ; (module Problem_2 : S)
   ; (module Problem_3 : S) (* CR emannes: problem 4 *)
   ; (module Problem_3)
   ; (module Problem_5)
+  ; (module Problem_6)
   ]
 ;;
 
