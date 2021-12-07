@@ -240,17 +240,20 @@ end
 
 module Problem_4 : S = struct
   module Victory = struct
-    type _t =
+    type t =
       { num_calls : int
       ; last_call : int
       ; sum_uncalled : int
       }
+    [@@deriving sexp]
+
+    let score t = t.last_call * t.sum_uncalled
   end
 
   module Board = struct
-    type t = int option list list
+    type t = int option list list [@@deriving sexp]
 
-    let _mark_call t call : t =
+    let mark_call t call : t =
       List.map
         t
         ~f:
@@ -260,16 +263,40 @@ module Problem_4 : S = struct
               | None -> None))
     ;;
 
-    let _sum_uncalled t =
+    let sum_uncalled t =
       List.concat t |> List.filter_opt |> List.sum (module Int) ~f:Fn.id
     ;;
 
-    let _is_bingo t =
+    let is_bingo t =
       let horizontal = List.exists t ~f:(List.for_all ~f:Option.is_none) in
       let vertical =
         List.exists (List.transpose_exn t) ~f:(List.for_all ~f:Option.is_none)
       in
+      let _diagonal_down =
+        List.mapi t ~f:(fun i row -> List.nth_exn row i) |> List.for_all ~f:Option.is_none
+      in
+      let _diagonal_up =
+        List.mapi t ~f:(fun i row -> List.nth_exn row (4 - i))
+        |> List.for_all ~f:Option.is_none
+      in
       horizontal || vertical
+    ;;
+
+    let eval t ~calls =
+      List.fold_until
+        calls
+        ~init:(t, 0)
+        ~f:(fun (t, num_calls) call ->
+          let t = mark_call t call in
+          let num_calls = num_calls + 1 in
+          if is_bingo t
+          then (
+            let victory =
+              { Victory.num_calls; sum_uncalled = sum_uncalled t; last_call = call }
+            in
+            Stop (Some victory))
+          else Continue (t, num_calls))
+        ~finish:(fun _ -> None)
     ;;
   end
 
@@ -295,8 +322,21 @@ module Problem_4 : S = struct
     { calls; boards }
   ;;
 
-  let solve_a _ = failwith "not implemented"
-  let solve_b _ = failwith "not implemented"
+  let end_states { boards; calls } =
+    List.map boards ~f:(Board.eval ~calls) |> List.filter_opt
+  ;;
+
+  let solve_a t =
+    List.sort (end_states t) ~compare:(fun v1 v2 -> Int.compare v1.num_calls v2.num_calls)
+    |> List.hd_exn
+    |> Victory.score
+  ;;
+
+  let solve_b t =
+    List.sort (end_states t) ~compare:(fun v1 v2 -> Int.compare v1.num_calls v2.num_calls)
+    |> List.last_exn
+    |> Victory.score
+  ;;
 
   let test_input =
     {| 7,4,9,5,11,17,23,2,0,14,21,24,10,16,13,6,15,25,12,22,18,20,8,19,3,26,1
@@ -324,20 +364,10 @@ module Problem_4 : S = struct
   let%expect_test _ =
     let input = parse_input (clean_input test_input) in
     print_s [%message (solve_a input : int)];
-    let%bind () = [%expect.unreachable] in
+    let%bind () = [%expect {|
+      ("solve_a input" 4512) |}] in
     print_s [%message (solve_b input : int)];
-    [%expect.unreachable]
-    [@@expect.uncaught_exn
-      {|
-    (* CR expect_test_collector: This test expectation appears to contain a backtrace.
-       This is strongly discouraged as backtraces are fragile.
-       Please change this test to not include a backtrace. *)
-
-    (monitor.ml.Error (Failure "not implemented")
-      ("<backtrace elided in test>" "Caught by monitor block_on_async"))
-    Raised at Base__Result.ok_exn in file "src/result.ml" (inlined), line 201, characters 17-26
-    Called from Async_unix__Thread_safe.block_on_async_exn in file "src/thread_safe.ml", line 132, characters 29-63
-    Called from Expect_test_collector.Make.Instance.exec in file "collector/expect_test_collector.ml", line 244, characters 12-19 |}]
+    [%expect{| ("solve_b input" 1924) |}]
   ;;
 end
 
@@ -486,7 +516,7 @@ module Problem_6 : S = struct
     print_s [%message (solve_a input : int)];
     let%bind () = [%expect {| ("solve_a input" 5934) |}] in
     print_s [%message (solve_b input : int)];
-    [%expect{| ("solve_b input" 26984457539) |}]
+    [%expect {| ("solve_b input" 26984457539) |}]
   ;;
 end
 
@@ -494,7 +524,7 @@ let problems =
   [ (module Problem_1 : S)
   ; (module Problem_2 : S)
   ; (module Problem_3 : S) (* CR emannes: problem 4 *)
-  ; (module Problem_3)
+  ; (module Problem_4)
   ; (module Problem_5)
   ; (module Problem_6)
   ]
